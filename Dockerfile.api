@@ -47,9 +47,25 @@ RUN echo "==> Installing dependencies..." \
  && ln -sf $NGINX_PREFIX/sbin/nginx /usr/local/bin/openresty \
  && ln -sf $OPENRESTY_PREFIX/bin/resty /usr/local/bin/resty \
  && ln -sf $OPENRESTY_PREFIX/luajit/bin/luajit-* $OPENRESTY_PREFIX/luajit/bin/lua \
- && ln -sf $OPENRESTY_PREFIX/luajit/bin/luajit-* /usr/local/bin/lua \
+ && ln -sf $OPENRESTY_PREFIX/luajit/bin/luajit-* /usr/local/bin/lua
+RUN echo "==> Installing luarocks..." \
+ && apk add wget unzip git \
+ && wget http://luarocks.org/releases/luarocks-2.2.2.tar.gz \
+ && tar zxpf luarocks-2.2.2.tar.gz \
+ && cd luarocks-2.2.2 \
+ && ./configure --prefix=$OPENRESTY_PREFIX/luajit \
+    --with-lua=$OPENRESTY_PREFIX/luajit/ \
+    --lua-suffix=jit-2.1.0-alpha \
+    --with-lua-include=$OPENRESTY_PREFIX/luajit/include/luajit-2.1 \
+ && make \
+ && make install \
+ && $OPENRESTY_PREFIX/luajit/bin/luarocks install jwt \
+ && $OPENRESTY_PREFIX/luajit/bin/luarocks install --server=http://rocks.moonscript.org luajwt \
+ && $OPENRESTY_PREFIX/luajit/bin/luarocks install hex --from=http://mah0x211.github.io/rocks/ \
+ && cd ..
+RUN echo "==> Cleaning up..." \
  && apk del \
-    make gcc musl-dev pcre-dev openssl-dev zlib-dev ncurses-dev readline-dev curl perl \
+    wget unzip git make gcc musl-dev pcre-dev openssl-dev zlib-dev ncurses-dev readline-dev curl perl \
  && apk add \
     libpcrecpp libpcre16 libpcre32 openssl libssl1.0 pcre libgcc libstdc++ \
  && rm -rf /var/cache/apk/* \

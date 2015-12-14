@@ -2,10 +2,11 @@ local method = ngx.req.get_method():lower()
 local headers = ngx.req.get_headers()
 local redis = require "resty.redis"
 local cjson = require "cjson"
---local jwt = require "resty.jwt"
+local jwt = require "luajwt"
+local hex = require "hex"
 
 local red = redis:new()
-local k, v, auth, ts, user, secret, err, ok, src, digest, jwt
+local k, v, auth, ts, user, secret, err, ok, src, digest, bearerToken
 
 local function isempty(s)
   return s == nil or s == ''
@@ -20,11 +21,9 @@ for k, v in pairs(headers) do
   elseif(k == "oneflow-user") then
     user = v
   elseif(k == "bearer-token") then
-    jwt = v
+    bearerToken = v
   end
 end
-
-print(jwt)
 
 if (isempty(auth) or isempty(ts) or isempty(user)) then
     ngx.status = ngx.HTTP_BAD_REQUEST
@@ -67,9 +66,22 @@ end
 src = method .. " " .. ngx.var.uri .. " " .. ts
 digest = ngx.encode_base64(ngx.hmac_sha1(secret, src))
 
+
+
+-- jwt testing
+local args = ngx.req.get_uri_args(1)
+if not bearerToken then
+    return ngx.say("Where is token?")
+end
+local key = "SECRET"
+local ok, err = jwt.decode(bearerToken, key)
+if not ok then
+    return ngx.say("Error: ", err)
+end
+
 -- check signature matches one on request
 if(digest == auth) then
-  ngx.say(digest)
+  ngx.say(hex.encode(ngx.hmac_sha1(secret, src)))
 else
   ngx.status = ngx.HTTP_UNAUTHORIZED
 end
